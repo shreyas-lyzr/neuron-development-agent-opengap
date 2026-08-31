@@ -1,0 +1,153 @@
+# Assessor registry for the Development stage.
+#
+# Every entry is (id, kind, policy, event, subject). The runner reads `policy`
+# and ONLY `blocking` results enter a gate's conjunction -- a warning or
+# advisory assessor returning `fail` records the finding and does not stop the
+# run. That is deliberate: the sandbox's own registry assigns `policy` and then
+# infers blocking-ness from `verdict == "fail"`, which lets an advisory
+# assessor block a gate.
+#
+# `subject` is what the measurement is ABOUT, which is not the same as what
+# produced the event. A20 fires on a worker's output but several of these are
+# statements about the ORCHESTRATOR's planning quality, and attributing them
+# correctly is the whole point of measuring a composition.
+#
+# Plan-time (A17/A18/A19) fire on `composition-emitted`, before any worker is
+# dispatched. A blocking failure there is not a gate failure -- it sends the
+# orchestrator back to re-emit, having spent nothing.
+
+version: 1
+
+gates:
+  g3:
+    stage: development
+    description: Exits Development.
+
+assessors:
+  # ---- plan time: fires on composition-emitted, nothing spent yet ----------
+  - id: a17-composition-coverage
+    kind: deterministic
+    policy: blocking
+    event: composition-emitted
+    subject: orchestrator
+    stage: development
+    description: >-
+      Every acceptance criterion is served by at least one worker, and every
+      path the two-pager predicts is claimed by at least one worker's
+      scope.write. The earliest available signal that a requirement is about
+      to be dropped.
+
+  - id: a18-context-preconditions
+    kind: deterministic
+    policy: blocking
+    event: composition-emitted
+    subject: orchestrator
+    stage: development
+    description: >-
+      Every context_required entry resolves -- the file exists, the symbol is
+      really in the module, the ADR id is real. Resolution only. This is NOT a
+      compliance check on what a worker later reads.
+
+  - id: a19-scope-exclusivity
+    kind: deterministic
+    policy: warning
+    event: composition-emitted
+    subject: orchestrator
+    stage: development
+    description: >-
+      Pairwise scope.write overlap between workers. A warning, not a failure:
+      overlap is sometimes the right shape, and the honest reading is that the
+      orchestrator should have declared a third worker for the shared surface.
+
+  # ---- post hoc: fires per worker output ----------------------------------
+  - id: a20-scope-containment
+    kind: deterministic
+    policy: blocking
+    event: worker-output
+    subject: worker
+    stage: development
+    gate: g3
+    description: >-
+      Every path a worker actually wrote is inside its declared scope.write,
+      measured against the worker's git worktree diff. Authoritative: the
+      PreToolUse guard is best-effort prevention on tools whose target is
+      visible, and cannot see through Bash.
+
+  - id: a21-expected-artifacts-present
+    kind: deterministic
+    policy: blocking
+    event: worker-output
+    subject: worker
+    stage: development
+    gate: g3
+    description: Every declared expected_artifact exists in the integrated tree.
+
+  - id: a7-artifact-prediction
+    kind: deterministic
+    policy: advisory
+    event: worker-output
+    subject: orchestrator
+    stage: development
+    description: >-
+      Precision / recall / accuracy of expected_artifacts against observed
+      writes. Advisory forever (ND-0014). Subject is the orchestrator: this
+      measures the quality of the forecast, not the worker's obedience.
+
+  - id: a22-self-report-fidelity
+    kind: deterministic
+    policy: advisory
+    event: worker-output
+    subject: worker
+    stage: development
+    description: >-
+      The worker's own report of what it wrote and read, against the
+      independent record. Writes are scored both directions. Reads are scored
+      on OVER-CLAIMING ONLY -- a read claimed but never performed costs the
+      worker; reading far beyond its declarations never does. That asymmetry is
+      what keeps this from rewarding less exploration.
+
+  # ---- stage level --------------------------------------------------------
+  - id: a2-tests-pass
+    kind: deterministic
+    policy: blocking
+    event: stage-complete
+    subject: stage
+    stage: development
+    gate: g3
+    description: The workspace's own visible test suite passes.
+
+  - id: a25-holdout-acceptance
+    kind: deterministic
+    policy: blocking
+    event: stage-complete
+    subject: stage
+    stage: development
+    gate: g3
+    description: >-
+      A per-epic acceptance suite the workers never see, mapped to acceptance
+      criteria by test-name prefix. The only measure here that is about
+      correctness rather than self-consistency, and unGameable because it is
+      not in the workspace.
+
+  - id: a23-plan-first-pass
+    kind: deterministic
+    policy: advisory
+    event: stage-complete
+    subject: orchestrator
+    stage: development
+    description: >-
+      How many attempts the roster needed to clear the plan-time checks. Free
+      to compute -- the composition record is append-only and keeps every
+      rejected attempt with the finding against it.
+
+  - id: a24-tier-allocation
+    kind: deterministic
+    policy: advisory
+    event: stage-complete
+    subject: orchestrator
+    stage: development
+    description: >-
+      Tier histogram and rationale distinctness. Flags the degenerate case
+      where every worker got one tier, which means the tier choice carried no
+      information and freeform-model-pool's central claim did not hold on this
+      run.

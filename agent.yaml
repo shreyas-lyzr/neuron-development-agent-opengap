@@ -1,0 +1,49 @@
+# GAP (GitAgentProtocol) manifest for the Neuron Development-stage agent.
+#
+# Read by `computeragent.identity.GapIdentityLoader` (see src/development_agent/identity.py).
+# SOUL.md, RULES.md and AGENTS.md beside this file are stitched into the orchestrator's
+# system prompt; the per-run context (model pool, tool catalog, limits) is appended by
+# compose.py at runtime because it is configuration, not identity.
+
+spec_version: "0.1.0"
+name: neuron-development-agent
+version: 0.1.0
+description: >-
+  Neuron Development stage (3 of 3). Composes a freeform worker roster over a model
+  pool, dispatches each worker as an isolated headless Claude Code session in its own
+  git worktree, and emits a scorecard measuring the orchestrator's planning accuracy
+  and each worker's containment and honesty. Its verdict is the G3 exit verdict.
+author: nordstrom-sre
+license: proprietary
+
+model:
+  # A pool ALIAS, not a provider id. config/model_pool.yaml owns alias -> id because the
+  # id differs by access mode (local `claude` CLI vs Bedrock inference profile) and that
+  # is one table to change. Override per run with --orchestrator-alias / NEURON_ORCHESTRATOR_ALIAS.
+  preferred: heavy
+  fallback:
+    - standard
+
+runtime:
+  # Orchestrator session ceiling. Workers carry their own `max_turns` in the roster.
+  max_turns: 40
+
+# The orchestrator is read-only by construction: it composes, it does not write. Any
+# write attempt is denied by its PreToolUse hook regardless of this list. Workers are
+# given their own subset of config/tool_catalog.yaml by the roster.
+tools:
+  - Read
+  - Glob
+  - Grep
+
+tags:
+  - neuron
+  - development-stage
+  - orchestrator
+  - g3
+
+# compliance.supervision.human_in_the_loop is deliberately ABSENT. The loader honours
+# `always` / `destructive` by forcing permission_mode=default, and a headless session
+# with no terminal to approve anything then hangs on its first write, holding a budget
+# slice and a wall clock. Containment is the scope guard (PreToolUse) plus the post-hoc
+# git-diff check (A20), not a permission prompt. identity.py refuses the key at preflight.

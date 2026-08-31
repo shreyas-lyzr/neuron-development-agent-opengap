@@ -1,0 +1,63 @@
+# Model pool for freeform-model-pool composition (ND-0020).
+#
+# The orchestrating agent picks a TIER ALIAS per sub-worker and records a
+# rationale. Aliases -- not model ids -- are what the orchestrator sees, so the
+# roster stays readable and the id mapping is one table to change.
+#
+# Two ids per alias, because model access differs by where this runs:
+#   local_id   -> passed to the headless `claude` CLI directly. Short aliases
+#                 are used deliberately: the CLI resolves them to whatever the
+#                 current generation is, so this file does not rot.
+#   bedrock_id -> used when CLAUDE_CODE_USE_BEDROCK=1. Inference-profile ids.
+#
+# VERIFY BEFORE DEPLOYING: only `us.anthropic.claude-opus-4-6-v1` is confirmed
+# against a working deployment (APP09355-coding-agent). The sonnet and haiku
+# profile ids below follow the same naming pattern but are UNVERIFIED. Override
+# per-alias with env vars NEURON_MODEL_HEAVY / _STANDARD / _LIGHT.
+
+version: 1
+
+model_pool:
+  - alias: heavy
+    tier: heavy
+    local_id: opus
+    bedrock_id: us.anthropic.claude-opus-4-6-v1      # confirmed in APP09355
+    input_cost_per_mtok: 15.0
+    output_cost_per_mtok: 75.0
+    guidance: >-
+      Correctness-critical implementation, security- or PII-adjacent work,
+      cross-cutting refactors, and anything where a subtle wrong answer is
+      expensive to detect downstream.
+
+  - alias: standard
+    tier: standard
+    local_id: sonnet
+    bedrock_id: us.anthropic.claude-sonnet-4-6-v1    # UNVERIFIED
+    input_cost_per_mtok: 3.0
+    output_cost_per_mtok: 15.0
+    guidance: >-
+      The default. Ordinary implementation against a clear design, test
+      authoring, QA, standards checks, and review work with a rubric.
+
+  - alias: light
+    tier: light
+    local_id: haiku
+    bedrock_id: us.anthropic.claude-haiku-4-5-v1     # UNVERIFIED
+    input_cost_per_mtok: 0.8
+    output_cost_per_mtok: 4.0
+    guidance: >-
+      Mechanical text transformation: changelog entries, docstring sweeps,
+      README updates. Work where the shape is fully determined by the input.
+
+# Fallback when the orchestrator names an alias that is not in the pool. The
+# substitution is always logged and recorded in the composition record, because
+# a silently-substituted model makes the cost comparison a lie.
+default_alias: standard
+
+runtime:
+  max_parallel_workers: 4
+  default_max_turns: 60
+  orchestrator_max_turns: 40
+  # Per-worker ceiling handed to ClaudeAgentOptions.max_budget_usd. The
+  # stage-level cap comes from the handoff's runtime_hints.max_token_budget_usd.
+  per_worker_budget_usd: 4.0

@@ -1,0 +1,42 @@
+# Tool catalog -- the ceiling a sub-worker's `tool_subset` is trimmed from.
+#
+# ND-0001's engineered/dynamic line: the orchestrating agent may narrow this
+# per worker, never widen it. A roster naming a tool absent from the catalog is
+# a plan-time rejection, not a runtime surprise.
+
+version: 1
+
+tools:
+  - name: Read
+    kind: read
+    description: Read a file.
+  - name: Glob
+    kind: read
+    description: Find files by glob pattern.
+  - name: Grep
+    kind: read
+    description: Search file contents.
+  - name: Write
+    kind: write
+    description: Create or overwrite a file.
+  - name: Edit
+    kind: write
+    description: Exact string replacement in a file.
+  - name: MultiEdit
+    kind: write
+    description: Several exact replacements in one file.
+  - name: Bash
+    kind: exec
+    description: >-
+      Run a shell command. Opaque to the PreToolUse scope guard -- the guard
+      cannot know what paths a command will touch, so containment for Bash
+      writes is caught post-hoc by A20 against the git diff instead.
+
+# Ceilings by intent. The orchestrator is told which ceiling its worker kinds
+# get; it picks a subset.
+ceilings:
+  implementer: [Read, Glob, Grep, Write, Edit, MultiEdit, Bash]
+  test_author: [Read, Glob, Grep, Write, Edit, MultiEdit, Bash]
+  reviewer:    [Read, Glob, Grep]
+  documenter:  [Read, Glob, Grep, Write, Edit]
+  orchestrator: [Read, Glob, Grep]      # read-only by construction
