@@ -18,7 +18,7 @@
 version: 1
 
 model_pool:
-  - alias: heavy
+  - alias: opus
     tier: heavy
     local_id: opus
     bedrock_id: us.anthropic.claude-opus-4-6-v1      # confirmed in APP09355
@@ -29,7 +29,7 @@ model_pool:
       cross-cutting refactors, and anything where a subtle wrong answer is
       expensive to detect downstream.
 
-  - alias: standard
+  - alias: sonnet
     tier: standard
     local_id: sonnet
     bedrock_id: us.anthropic.claude-sonnet-4-6-v1    # UNVERIFIED
@@ -39,7 +39,7 @@ model_pool:
       The default. Ordinary implementation against a clear design, test
       authoring, QA, standards checks, and review work with a rubric.
 
-  - alias: light
+  - alias: haiku
     tier: light
     local_id: haiku
     bedrock_id: us.anthropic.claude-haiku-4-5-v1     # UNVERIFIED
@@ -52,7 +52,7 @@ model_pool:
 # Fallback when the orchestrator names an alias that is not in the pool. The
 # substitution is always logged and recorded in the composition record, because
 # a silently-substituted model makes the cost comparison a lie.
-default_alias: standard
+default_alias: sonnet
 
 runtime:
   max_parallel_workers: 4
