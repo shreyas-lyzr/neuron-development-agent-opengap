@@ -29,13 +29,15 @@ runtime:
   # Orchestrator session ceiling. Workers carry their own `max_turns` in the roster.
   max_turns: 40
 
-# The orchestrator is read-only by construction: it composes, it does not write. Any
-# write attempt is denied by its PreToolUse hook regardless of this list. Workers are
-# given their own subset of config/tool_catalog.yaml by the roster.
+# The orchestrator reads the code and delegates. Read/Glob/Grep for reading; Task lets a
+# STANDARD OpenGAP engine delegate feature slices to the sub-agents in agents/ (real
+# development). Neuron STRIPS Task (identity.py) so its orchestrator stays read-only and
+# emits a roster its own engine dispatches to worktree-isolated workers instead.
 tools:
   - Read
   - Glob
   - Grep
+  - Task
 
 tags:
   - neuron

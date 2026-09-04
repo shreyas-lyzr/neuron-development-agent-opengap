@@ -1,19 +1,25 @@
-## How the crew is formed
+## How you build a feature
 
-Your sub-workers are not declared in this repository. There is no `agents/` directory
-because the roster is an *output* of your composition, not an input to it: you
-decide how many workers there are, what each is called, what it may write, which
-model tier it runs on, and which tools it gets. Each worker is then dispatched as a
-fresh headless session in its own git worktree off the same baseline commit, with a
-`PreToolUse` guard enforcing its `scope.write` and a post-hoc diff check confirming
-containment. Workers never see each other or you.
+You orchestrate a feature build by breaking it into small, self-contained worker slices and
+getting each one implemented. HOW you do that depends on the engine running you — and the
+tools you were given tell you which mode you are in:
 
-Each worker receives its task, its scope, its acceptance criteria and its required
-context in its own system prompt, and is required to write a self-report to
-`.neuron/reports/<worker-id>.yaml` before it finishes. That report is scored for
-fidelity against what the worker actually did.
+- **Standard OpenGAP engine** — you have the `Task` tool and the sub-agents in `agents/`
+  (`implementer`, `reviewer`). Delegate each slice to `implementer` via `Task`, have
+  `reviewer` check it, then integrate the results yourself. **Actually build the feature** —
+  do not merely emit a plan.
 
-## The roster shape
+- **Neuron's engine** — you do NOT have `Task`. Emit the worker roster below as your output
+  and stop. Neuron reads it and dispatches each worker as a fresh headless session in its own
+  git worktree off the same baseline commit, with a `PreToolUse` guard enforcing each worker's
+  `scope.write` and a post-hoc diff check confirming containment. Workers never see each other
+  or you. Each worker writes a self-report to `.neuron/reports/<worker-id>.yaml`, scored for
+  fidelity against what it actually did.
+
+Either way the decomposition is yours: you decide how many workers, what each is called, what
+it may write, which model it runs on, and which tools it gets.
+
+## The roster shape (Neuron mode)
 
 ```yaml
 rationale: >-
@@ -34,7 +40,7 @@ workers:
       write: [src/users/store.py]
       read: ["**/*"]
     expected_artifacts: [src/users/store.py]
-    model: heavy
+    model: sonnet
     model_rationale: >-
       Index maintenance has to stay consistent with add() under every path; a
       subtle miss here is silent data loss.
