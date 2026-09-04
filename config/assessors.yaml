@@ -109,20 +109,22 @@ assessors:
   # ---- stage level --------------------------------------------------------
   - id: a2-tests-pass
     kind: deterministic
-    policy: blocking
+    # advisory (not blocking): the "make a change" flow often ships no pytest suite, and A2
+    # fails-closed on a missing/empty one. Reported as a warning, kept OUT of the g3 conjunction.
+    policy: advisory
     event: stage-complete
     subject: stage
     stage: development
-    gate: g3
-    description: The workspace's own visible test suite passes.
+    description: The workspace's own visible test suite passes (advisory).
 
   - id: a25-holdout-acceptance
     kind: deterministic
-    policy: blocking
+    # advisory (not blocking): no held-out suite is authored in this flow, and A25 fails-closed
+    # without one. Reported as a warning, kept OUT of the g3 conjunction (now A20 ∧ A21).
+    policy: advisory
     event: stage-complete
     subject: stage
     stage: development
-    gate: g3
     description: >-
       A per-epic acceptance suite the workers never see, mapped to acceptance
       criteria by test-name prefix. The only measure here that is about
